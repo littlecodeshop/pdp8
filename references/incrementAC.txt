@@ -1,0 +1,10 @@
+/ Repeatedly increments the Accumulator in an endless loop.
+/ A delay is introduced so that the user can visibly see the Accumulator being incremented. 
+/ Starting Memory Location is 5555.
+
+Addr	Code
+5555	7001	MAIN,	IAC		/ Increments AC
+5556	2361	DELAY,	ISZ COUNT	/ Increments COUNT until overflow to delay the computer 
+5557	5356		JMP DELAY	/ 
+5560	5355		JMP MAIN	/ Loop the program
+5561	0000	COUNT,			/ Incremented by ISZ
