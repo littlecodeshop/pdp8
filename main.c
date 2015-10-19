@@ -1,5 +1,23 @@
 #include <stdio.h>
 
+typedef enum {
+    AND = 0,
+    TAD = 1,
+    ISZ = 2,
+    DCA = 3,
+    JMS = 4,
+    JMP = 5,
+    IOT = 6,
+    OPR = 7
+} opCode;
+
+typedef enum {
+    FETCH = 0,
+    EXEC  = 1,
+    DEFER = 2,
+    BREAK = 3
+} majorState;
+
 struct pdp8cpu{
 
     unsigned short ACL;
@@ -9,30 +27,18 @@ struct pdp8cpu{
     unsigned short SR;
     unsigned char IR;
 
+    //current state
+    majorState state;
 };
 
-
-typedef enum {
-    AND = 0,
-    TAD = 1,
-    ISZ =2,
-    DCA =3,
-    JMS =4,
-    JMP =5
-} opCode;
 
 char * opcode_label[] = {
     "AND","TAD","ISZ","DCA","JMS","JMP","IOT","OPR"
 };
 
-struct opcode{
-    unsigned char opcode;
-    unsigned char indirect;
-    unsigned char zeropage;
-    unsigned char address;
-};
-
+//le hardware 
 struct pdp8cpu cpu;
+unsigned short memory[0xFFF]; //4096 mots de memoire (pas d'extension :))
 
 void decode(unsigned short word)
 {
@@ -41,9 +47,44 @@ void decode(unsigned short word)
     unsigned char zeropage = (word & 0x80)>>7;
     unsigned char address = (word & 0x7F);
 
+    printf("\n=> %s IND %d ZP %d ADDR:%o \n",opcode_label[op],indirect,zeropage,address);
 
-    printf("\n=> %s ",opcode_label[op]);
+}
 
+void dumpCpu()
+{
+    printf("ACL:%o PC:%o SR:%o\n",cpu.ACL,cpu.PC,cpu.SR);
+}
+
+void dumpMemory(unsigned short addr)
+{
+    printf("%04o:",addr);
+    for(int i = 0;i<8;i++){
+        printf("\t%04o",memory[addr+i]);
+    }
+    printf("\n");
+}
+
+void loadAddress()
+{
+    //put content of SR into PC
+    cpu.PC = cpu.SR&0xFFF;
+}
+
+void deposit()
+{
+    //deposit SR in mem[PC]
+    memory[cpu.PC] = cpu.SR;
+}
+
+void singleInstruction()
+{
+
+
+}
+
+void writeMem(unsigned short location, unsigned short value)
+{
 
 }
 
@@ -96,7 +137,33 @@ int main(int argc, char ** argv){
 
     version();
 
-    for(int i=0;i<5;i++){
-        decode (program[i]);
+    //load the program 
+    cpu.SR = 05555; //address de base
+    loadAddress();
+    cpu.SR = 07001;
+    deposit();
+    cpu.SR = 05556; 
+    loadAddress();
+    cpu.SR = 02361;
+    deposit();
+    cpu.SR = 05557; 
+    loadAddress();
+    cpu.SR = 05356;
+    deposit();
+    cpu.SR = 05560; 
+    loadAddress();
+    cpu.SR = 05355;
+    deposit();
+    cpu.SR = 05561; 
+    loadAddress();
+    cpu.SR = 00000;
+    deposit();
+
+    for(int i = 0;i<4;i++){
+        decode(memory[05555+i]);
+        dumpCpu();
     }
+
+    dumpMemory(05555);
+
 }
