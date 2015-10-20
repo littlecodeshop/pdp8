@@ -74,6 +74,23 @@ void writeMem(unsigned short location, unsigned short value)
 
 }
 
+unsigned short realAddress(unsigned short value)
+{
+    unsigned short indirect = (value & 0x100)>>8;
+    unsigned short currentpage = (value & 0x80)>>7;
+    unsigned short address = (value & 0x7F);
+
+    //si zeropage donc les 5 premiers sont 00000 sinon il faut copier de PC
+    unsigned short prefix = currentpage?(cpu.PC&07600):00;
+    unsigned short addr = prefix|address;
+
+    printf("real address :%04o\n",addr);
+
+    //si indirect -> c'est un pointeur sinon on renvois l'address
+    return indirect?memory[addr]:addr;
+
+}
+
 void ANDY(unsigned short value)
 {
     cpu.ACL = cpu.ACL&value;
@@ -86,6 +103,12 @@ void TADY(unsigned short value)
 
 void ISZY(unsigned short value)
 {
+
+    unsigned short addr = realAddress(value);
+    memory[addr] = (memory[addr]+1)&0777;
+    if(memory[addr] == 0){
+        printf("ZERO !\n");
+    }
 
 }
 
@@ -101,7 +124,8 @@ void JMSY(unsigned short value)
 
 void JMPY(unsigned short value)
 {
-
+    unsigned short addr = realAddress(value);
+    cpu.PC = addr;
 }
 
 void IOTV(unsigned short value)
@@ -166,13 +190,12 @@ void OPRV(unsigned short value)
             //RTR
             cpu.ACL = ((cpu.ACL<<11)|(cpu.ACL>>2))&07777;
             break;
-        case 07012:
+        case 07020:
             //CML
             cpu.ACL ^= 1<<12;
             break;
-        case 07020:
+        case 07040:
             //CMA
-            cpu.ACL ^= ;
             break;
     }
     
@@ -251,6 +274,24 @@ int main(int argc, char ** argv){
 
     cpu.SR = 05555; //address de base
     loadAddress();
+    singleInstruction();
+    dumpMemory(05555);
+    singleInstruction();
+    dumpMemory(05555);
+    singleInstruction();
+    dumpMemory(05555);
+    singleInstruction();
+    dumpMemory(05555);
+    singleInstruction();
+    dumpMemory(05555);
+    singleInstruction();
+    dumpMemory(05555);
+    singleInstruction();
+    dumpMemory(05555);
+    singleInstruction();
+    singleInstruction();
+    singleInstruction();
+    singleInstruction();
     singleInstruction();
 
 }
