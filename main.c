@@ -40,16 +40,6 @@ char * opcode_label[] = {
 struct pdp8cpu cpu;
 unsigned short memory[0xFFF]; //4096 mots de memoire (pas d'extension :))
 
-void decode(unsigned short word)
-{
-    opCode op = word >> 9;
-    unsigned char indirect = (word & 0x100)>>8;
-    unsigned char zeropage = (word & 0x80)>>7;
-    unsigned char address = (word & 0x7F);
-
-    printf("\n=> %s IND %d ZP %d ADDR:%o \n",opcode_label[op],indirect,zeropage,address);
-
-}
 
 void dumpCpu()
 {
@@ -77,11 +67,7 @@ void deposit()
     memory[cpu.PC] = cpu.SR;
 }
 
-void singleInstruction()
-{
 
-
-}
 
 void writeMem(unsigned short location, unsigned short value)
 {
@@ -115,6 +101,109 @@ void JMSY(unsigned short value)
 
 void JMPY(unsigned short value)
 {
+
+}
+
+void IOTV(unsigned short value)
+{
+    switch(value){
+        case 06031:
+            printf(">>>>>KSF<<<<<\n");
+            break;
+        case 06032:
+            printf(">>>>>KCC<<<<<\n");
+            break;
+        case 06034:
+            printf(">>>>>KRS<<<<<\n");
+            break;
+        case 06036:
+            printf(">>>>>KRB<<<<<\n");
+            break;
+        case 06041:
+            printf(">>>>>TSF<<<<<\n");
+            break;
+        case 06042:
+            printf(">>>>>TCF<<<<<\n");
+            break;
+        case 06044:
+            printf(">>>>>TPC<<<<<\n");
+            break;
+        case 06046:
+            printf(">>>>>TLS<<<<<\n");
+            break;
+
+        default:
+            break;
+    
+    }
+
+}
+
+void OPRV(unsigned short value)
+{
+    switch(value){
+    
+        case 07000:
+            //NOP
+            break;
+        case 07001:
+            //IAC
+            cpu.ACL++;
+            break;
+        case 07004:
+            //RAL
+            unsigned short tmp = (cpu.ACL >> 12)&1
+            cpu.ACL = (cpu.ACL<<1)|tmp;
+            break;
+        case 07006:
+            //RTL
+            unsigned short tmp = (cpu.ACL >> 11)&3
+            cpu.ACL = (cpu.ACL<<2)|tmp;
+            break;
+        case 07010:
+            //RAR
+            cpu.ACL = cpu.ACL>>1;
+            break;
+        case 07012:
+            //RTR
+            cpu.ACL = cpu.ACL>>2;
+            break;
+        case 07012:
+            //CML
+            cpu.ACL ^= 1<<12;
+            break;
+        case 07020:
+            //CMA
+            cpu.ACL ^= ;
+            break;
+    }
+    
+}
+
+
+void (*pdp8_exec[8])(unsigned short v) = {ANDY,TADY,ISZY,DCAY,JMSY,JMPY,IOTV,OPRV};
+
+void execute(unsigned short word)
+{
+    opCode op = word >> 9;
+    unsigned char indirect = (word & 0x100)>>8;
+    unsigned char zeropage = (word & 0x80)>>7;
+    unsigned char address = (word & 0x7F);
+
+    printf("\n=> %s IND %d ZP %d ADDR:%o \n",opcode_label[op],indirect,zeropage,address);
+
+    pdp8_exec[op](word);
+}
+
+void singleInstruction()
+{
+    //fetch
+    unsigned short next_op = memory[cpu.PC++];
+
+    //execute ??
+    execute(next_op);
+
+    dumpCpu();
 
 }
 
@@ -159,11 +248,11 @@ int main(int argc, char ** argv){
     cpu.SR = 00000;
     deposit();
 
-    for(int i = 0;i<4;i++){
-        decode(memory[05555+i]);
-        dumpCpu();
-    }
 
     dumpMemory(05555);
+
+    cpu.SR = 05555; //address de base
+    loadAddress();
+    singleInstruction();
 
 }
