@@ -152,21 +152,19 @@ void OPRV(unsigned short value)
             break;
         case 07004:
             //RAL
-            unsigned short tmp = (cpu.ACL >> 12)&1
-            cpu.ACL = (cpu.ACL<<1)|tmp;
+            cpu.ACL = ((cpu.ACL<<1)|(cpu.ACL>>12))&07777;
             break;
         case 07006:
             //RTL
-            unsigned short tmp = (cpu.ACL >> 11)&3
-            cpu.ACL = (cpu.ACL<<2)|tmp;
+            cpu.ACL = ((cpu.ACL<<2)|(cpu.ACL>>11))&07777;
             break;
         case 07010:
             //RAR
-            cpu.ACL = cpu.ACL>>1;
+            cpu.ACL = ((cpu.ACL<<12)|(cpu.ACL>>1))&07777;
             break;
         case 07012:
             //RTR
-            cpu.ACL = cpu.ACL>>2;
+            cpu.ACL = ((cpu.ACL<<11)|(cpu.ACL>>2))&07777;
             break;
         case 07012:
             //CML
