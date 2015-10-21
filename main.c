@@ -66,7 +66,7 @@ void loadAddress()
 void deposit()
 {
     //deposit SR in mem[PC]
-    memory[cpu.PC] = cpu.SR;
+    memory[cpu.PC++] = cpu.SR;
 }
 
 
@@ -95,13 +95,13 @@ unsigned short realAddress(unsigned short value)
 
 void ANDY(unsigned short value)
 {
-    unsigned short v = memory[realAddress(value)]
+    unsigned short v = memory[realAddress(value)];
     cpu.ACL = cpu.ACL&v;
 }
 
 void TADY(unsigned short value)
 {
-    unsigned short v = memory[realAddress(value)]
+    unsigned short v = memory[realAddress(value)];
     cpu.ACL = cpu.ACL+v;
 }
 
@@ -111,7 +111,7 @@ void ISZY(unsigned short value)
     unsigned short addr = realAddress(value);
     memory[addr] = (memory[addr]+1)&0777;
     if(memory[addr] == 0){
-        printf("ZERO !\n");
+        cpu.PC++;
     }
 
 }
@@ -119,13 +119,13 @@ void ISZY(unsigned short value)
 void DCAY(unsigned short value)
 {
 
-    unsigned short v = memory[realAddress(value)]
+    unsigned short v = memory[realAddress(value)];
 }
 
 void JMSY(unsigned short value)
 {
 
-    unsigned short v = memory[realAddress(value)]
+    unsigned short v = memory[realAddress(value)];
 }
 
 void JMPY(unsigned short value)
@@ -226,7 +226,6 @@ void singleInstruction()
 {
     //fetch
     unsigned short next_op = memory[cpu.PC++];
-
     //execute ??
     execute(next_op);
 
@@ -258,20 +257,12 @@ int main(int argc, char ** argv){
     loadAddress();
     cpu.SR = 07001;
     deposit();
-    cpu.SR = 05556; 
-    loadAddress();
     cpu.SR = 02361;
     deposit();
-    cpu.SR = 05557; 
-    loadAddress();
     cpu.SR = 05356;
     deposit();
-    cpu.SR = 05560; 
-    loadAddress();
     cpu.SR = 05355;
     deposit();
-    cpu.SR = 05561; 
-    loadAddress();
     cpu.SR = 00000;
     deposit();
 
@@ -280,24 +271,10 @@ int main(int argc, char ** argv){
 
     cpu.SR = 05555; //address de base
     loadAddress();
-    singleInstruction();
-    dumpMemory(05555);
-    singleInstruction();
-    dumpMemory(05555);
-    singleInstruction();
-    dumpMemory(05555);
-    singleInstruction();
-    dumpMemory(05555);
-    singleInstruction();
-    dumpMemory(05555);
-    singleInstruction();
-    dumpMemory(05555);
-    singleInstruction();
-    dumpMemory(05555);
-    singleInstruction();
-    singleInstruction();
-    singleInstruction();
-    singleInstruction();
-    singleInstruction();
 
+    while(1){
+        singleInstruction();
+        dumpMemory(05555);
+    }
+    
 }
