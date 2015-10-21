@@ -1,3 +1,5 @@
+//Reference card :
+//http://homepage.cs.uiowa.edu/~jones/pdp8/refcard/74.html
 #include <stdio.h>
 
 typedef enum {
@@ -93,12 +95,14 @@ unsigned short realAddress(unsigned short value)
 
 void ANDY(unsigned short value)
 {
-    cpu.ACL = cpu.ACL&value;
+    unsigned short v = memory[realAddress(value)]
+    cpu.ACL = cpu.ACL&v;
 }
 
 void TADY(unsigned short value)
 {
-    cpu.ACL = cpu.ACL+value;
+    unsigned short v = memory[realAddress(value)]
+    cpu.ACL = cpu.ACL+v;
 }
 
 void ISZY(unsigned short value)
@@ -115,11 +119,13 @@ void ISZY(unsigned short value)
 void DCAY(unsigned short value)
 {
 
+    unsigned short v = memory[realAddress(value)]
 }
 
 void JMSY(unsigned short value)
 {
 
+    unsigned short v = memory[realAddress(value)]
 }
 
 void JMPY(unsigned short value)
