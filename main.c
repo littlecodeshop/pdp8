@@ -102,30 +102,30 @@ void ANDY(unsigned short value)
 void TADY(unsigned short value)
 {
     unsigned short v = memory[realAddress(value)];
-    cpu.ACL = cpu.ACL+v;
+    cpu.ACL = (cpu.ACL+v);
 }
 
 void ISZY(unsigned short value)
 {
-
     unsigned short addr = realAddress(value);
     memory[addr] = (memory[addr]+1)&0777;
     if(memory[addr] == 0){
         cpu.PC++;
     }
-
 }
 
 void DCAY(unsigned short value)
 {
-
-    unsigned short v = memory[realAddress(value)];
+    unsigned short addr = realAddress(value);
+    memory[addr] = cpu.ACL;
+    cpu.ACL = cpu.ACL&010000; //je masque le L bit car pas affecté !
 }
 
 void JMSY(unsigned short value)
 {
-
-    unsigned short v = memory[realAddress(value)];
+    unsigned short addr = realAddress(value);
+    memory[addr] = cpu.PC;
+    cpu.PC = addr+1;
 }
 
 void JMPY(unsigned short value)
