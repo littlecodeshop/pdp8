@@ -169,40 +169,104 @@ void IOTV(unsigned short value)
 
 }
 
+
+void OPRGRP1(unsigned short value)
+{
+    printf("group 1\n");
+    if(value&0200){ //CLA
+        cpu.ACL&=010000;
+    }
+    if(value&0100){ //CLL
+        cpu.ACL&=07777;
+    }
+    if(value&040){ //CMA
+        cpu.ACL ^= 07777;
+    }
+    if(value&020){ //CML
+        cpu.ACL ^= 1<<12;
+    }
+    if(value&01){ //IAC
+        cpu.ACL++;
+    }
+    if(value&010){ //RAR
+        if(value&02){ //2
+            cpu.ACL = ((cpu.ACL<<11)|(cpu.ACL>>2))&07777;
+        }else{
+            cpu.ACL = ((cpu.ACL<<12)|(cpu.ACL>>1))&07777;
+        }
+    }
+    if(value&04){ //RAL
+        //one or 2 ??
+        if(value&02){ //2
+            cpu.ACL = ((cpu.ACL<<2)|(cpu.ACL>>11))&07777;
+        }else{
+            cpu.ACL = ((cpu.ACL<<1)|(cpu.ACL>>12))&07777;
+        }
+    }
+}
+
+void OPRGRP2(unsigned short value)    
+{
+    if((value&01)==0){
+        printf("group 2\n");
+        if(value==07410){//inconditional skip !
+            cpu.PC++;
+            return;
+        }
+        if(value&0100){ //SMA/SPA
+            if(value&010){//SPA
+                if((cpu.ACL&04000)==0){
+                    cpu.PC++;
+                }
+            }else{//SMA
+                if(cpu.ACL&04000){
+                    cpu.PC++;
+                }
+            }
+        }
+        if(value&040){ //SZA/SNA
+            if(value&010){//SNA
+                if(cpu.ACL&0777){
+                    cpu.PC++;
+                }
+            }else{//SZA
+                if((cpu.ACL&0777)==0){
+                    cpu.PC++;
+                }
+            }
+        }
+        if(value&020){ //SNL
+            if(value&010){//SZL
+                if((cpu.ACL&010000)==0){
+                    cpu.PC++;
+                }
+            }else{//SNL
+                if(cpu.ACL&010000){
+                    cpu.PC++;
+                }
+            }
+        }
+        if(value&0200){ //CLA
+            cpu.ACL&=010000;
+        }
+        if(value&04){ //OSR
+            cpu.ACL |= cpu.SR;
+        }
+        if(value&02){ //HLT
+            printf("HALT");
+        }
+    } else {
+        printf("EAE GROUP INSTRUCTIONS\n");
+    }
+}
+
 void OPRV(unsigned short value)
 {
-    switch(value){
-    
-        case 07000:
-            //NOP
-            break;
-        case 07001:
-            //IAC
-            cpu.ACL++;
-            break;
-        case 07004:
-            //RAL
-            cpu.ACL = ((cpu.ACL<<1)|(cpu.ACL>>12))&07777;
-            break;
-        case 07006:
-            //RTL
-            cpu.ACL = ((cpu.ACL<<2)|(cpu.ACL>>11))&07777;
-            break;
-        case 07010:
-            //RAR
-            cpu.ACL = ((cpu.ACL<<12)|(cpu.ACL>>1))&07777;
-            break;
-        case 07012:
-            //RTR
-            cpu.ACL = ((cpu.ACL<<11)|(cpu.ACL>>2))&07777;
-            break;
-        case 07020:
-            //CML
-            cpu.ACL ^= 1<<12;
-            break;
-        case 07040:
-            //CMA
-            break;
+    if((value&0400)==0){
+        OPRGRP1(value);
+    }
+    if(value&0400){
+        OPRGRP2(value);
     }
     
 }
