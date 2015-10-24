@@ -35,6 +35,14 @@ struct pdp8cpu{
     majorState state;
 };
 
+struct teletypeASR33 {
+
+    unsigned char tti_buffer; //8 bit buffer contains the last typed char
+    unsigned char kbd_flag; //1 when there is something ready in tti
+    unsigned char tto_buffer; //8 bit buffer next char to be printed
+    unsigned char prt_flag; //1 when ready to print next char
+
+};
 
 char * opcode_label[] = {
     "AND","TAD","ISZ","DCA","JMS","JMP","IOT","OPR"
@@ -42,6 +50,7 @@ char * opcode_label[] = {
 
 //le hardware 
 struct pdp8cpu cpu;
+struct teletypeASR33 teletype;
 unsigned short memory[0xFFF]; //4096 mots de memoire (pas d'extension :))
 
 
@@ -88,7 +97,7 @@ unsigned short realAddress(unsigned short value)
     unsigned short prefix = currentpage?(cpu.PC&07600):00;
     unsigned short addr = prefix|address;
 
-    printf("real address :%04o\n",addr);
+    //printf("real address :%04o\n",addr);
 
     //si indirect -> c'est un pointeur sinon on renvois l'address
     return indirect?memory[addr]:addr;
@@ -141,29 +150,48 @@ void IOTV(unsigned short value)
     switch(value){
         case 06031:
             printf(">>>>>KSF<<<<<\n");
-
-
+            if(teletype.kbd_flag)
+            {
+                cpu.PC++;
+            }
             break;
         case 06032:
             printf(">>>>>KCC<<<<<\n");
+            teletype.kbd_flag = 0;
+            cpu.ACL&=010000;
             break;
         case 06034:
-            printf(">>>>>KRS<<<<<\n");
+            {printf(">>>>>KRS<<<<<\n");
+            unsigned short tmp = (unsigned short)teletype.tti_buffer;
+            cpu.ACL = (cpu.ACL&017400)|tmp;}
             break;
         case 06036:
-            printf(">>>>>KRB<<<<<\n");
+            {printf(">>>>>KRB<<<<<\n");
+            teletype.kbd_flag = 0;
+            cpu.ACL&=010000;
+            unsigned short tmp = (unsigned short)teletype.tti_buffer;
+            cpu.ACL = (cpu.ACL&017400)|tmp;}
             break;
         case 06041:
             printf(">>>>>TSF<<<<<\n");
+            teletype.prt_flag = 1;
+            if(teletype.prt_flag)
+            {
+                cpu.PC++;
+            }
             break;
         case 06042:
             printf(">>>>>TCF<<<<<\n");
+            teletype.prt_flag = 0;
             break;
         case 06044:
-            printf(">>>>>TPC<<<<<\n");
+            teletype.tto_buffer = (unsigned char)cpu.ACL;
+            printf(">>>>>TPC<<<<< CHAR : %c\n",teletype.tto_buffer);
             break;
         case 06046:
-            printf(">>>>>TLS<<<<<\n");
+            teletype.prt_flag = 0;
+            teletype.tto_buffer = (unsigned char)cpu.ACL;
+            printf(">>>>>TLS<<<<< CHAR : %c %d\n",teletype.tto_buffer,teletype.tto_buffer);
             break;
 
         default:
@@ -176,7 +204,7 @@ void IOTV(unsigned short value)
 
 void OPRGRP1(unsigned short value)
 {
-    printf("group 1\n");
+    //printf("group 1\n");
     if(value&0200){ //CLA
         cpu.ACL&=010000;
     }
@@ -212,7 +240,7 @@ void OPRGRP1(unsigned short value)
 void OPRGRP2(unsigned short value)    
 {
     if((value&01)==0){
-        printf("group 2\n");
+        //printf("group 2\n");
         if(value==07410){//inconditional skip !
             cpu.PC++;
             return;
@@ -286,7 +314,7 @@ void execute(unsigned short word)
     unsigned char zeropage = (word & 0x80)>>7;
     unsigned char address = (word & 0x7F);
 
-    printf("\n=> %s IND %d ZP %d ADDR:%o \n",opcode_label[op],indirect,zeropage,address);
+    //printf("\n=> %s IND %d ZP %d ADDR:%o \n",opcode_label[op],indirect,zeropage,address);
 
     pdp8_exec[op](word);
 }
@@ -298,7 +326,7 @@ void singleInstruction()
     //execute ??
     execute(next_op);
 
-    dumpCpu();
+    //dumpCpu();
 
 }
 
