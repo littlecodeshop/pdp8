@@ -29,6 +29,8 @@ struct pdp8cpu{
     unsigned short SR;
     unsigned char IR;
 
+    unsigned char HALT;
+
     //current state
     majorState state;
 };
@@ -139,6 +141,8 @@ void IOTV(unsigned short value)
     switch(value){
         case 06031:
             printf(">>>>>KSF<<<<<\n");
+
+
             break;
         case 06032:
             printf(">>>>>KCC<<<<<\n");
@@ -254,6 +258,7 @@ void OPRGRP2(unsigned short value)
         }
         if(value&02){ //HLT
             printf("HALT");
+            cpu.HALT = 1;
         }
     } else {
         printf("EAE GROUP INSTRUCTIONS\n");
@@ -307,16 +312,11 @@ void version()
 int main(int argc, char ** argv){
 
     unsigned short program[] = {
-        07001,
-        02361,
-        05356,
-        05355,
-        00000
     };
 
     version();
 
-    //load the program 
+    //load the program //increment memory  
     cpu.SR = 05555; //address de base
     loadAddress();
     cpu.SR = 07001;
@@ -331,14 +331,50 @@ int main(int argc, char ** argv){
     deposit();
 
 
-    dumpMemory(05555);
+    ////// PROGRAM UART
+    cpu.SR = 07470;
+    loadAddress();
+    cpu.SR = 07200;
+    deposit();
+    cpu.SR = 07001;
+    deposit();
+    cpu.SR = 07002;
+    deposit();
+    cpu.SR = 07001;
+    deposit();
+    cpu.SR = 06046;
+    deposit();
+    cpu.SR = 07402;
+    deposit();
 
-    cpu.SR = 05555; //address de base
+
+    ////////// TTY TEST OUTPUT
+    cpu.SR = 00000;
+    loadAddress();
+    cpu.SR = 07200;
+    deposit();
+    cpu.SR = 06046;
+    deposit();
+    cpu.SR = 06041;
+    deposit();
+    cpu.SR = 05002;
+    deposit();
+    cpu.SR = 07001;
+    deposit();
+    cpu.SR = 06046;
+    deposit();
+    cpu.SR = 05002;
+    deposit();
+
+
+    cpu.SR = 00000; //address de base
     loadAddress();
 
-    while(1){
+    cpu.HALT = 0;
+
+    while(!cpu.HALT){
         singleInstruction();
-        dumpMemory(05555);
+        getchar(); 
     }
     
 }
