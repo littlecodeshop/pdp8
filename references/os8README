@@ -1,0 +1,77 @@
+OS8 Version 3Q RX01 diskette images, extracted from old RX01 diskettes
+by John Wilson <wilsonj@rpi.edu> who E-mailed these images to Doug Jones
+<jones@cs.uiowa.edu> on Sept 2, 1994.  These disk images were then
+converted to the format documented here.
+
+The two diskette images in this file are:
+
+   os8boot, the core of the OS/8 distribution.
+   os8f4, other OS/8 utilities, including FORTRAN.
+
+Also included is:
+
+   os8FORMAT, the format of the RX01 diskettes used by Jones's PDP-8 emulator.
+   os8LICENCE, the licence agreement under which this material is distributed.
+   os8README, this text!
+
+Please read the licence agreement!  DEC has been very generous with this!
+
+Both diskette images are distributed in uuencoded format.  If you have
+a UNIX system, piping this distribution into sh will include the needed
+calls to uudecode to undo this.  If you are extracting this archive on a
+non-UNIX system, you will need to uudecode the files separately.
+
+To check if the files uudecoded correctly, note that each file should be
+exactly 256512 bytes long.
+
+Booting OS/8 from these disks on the emulator and then using the DIRECT
+command after setting the system date appropriately gives the following
+output (if you don't set the date, most remains the same as is shown):
+
+ ------ os8boot ------
+
+SYS  VOLUME--   1
+SYS:=RX8E
+OS/8 SYSTEM   VERSION   3Q
+
+BUILD .SV  33           HELP  .SV   8           BASIC .UF   4
+ABSLDR.SV   5 06/01/77  PAL8  .SV  19           BCOMP .SV  17
+BITMAP.SV   5           PIP   .SV  11           BLOAD .SV   8
+BOOT  .SV   5           PT8E  .BN   1 07/05/77  BRTS  .SV  15
+CCL   .SV  18           RESORC.SV  10           EABRTS.BN  24
+CREF  .SV  13           RXCOPY.SV   6           RESEQ .BA   6
+DIRECT.SV   7           SABR  .SV  24           ECHO  .SV   2
+EDIT  .SV  10 06/09/73  TECO  .SV  22           RKLFMT.SV   9 07/05/77
+EPIC  .SV  14           BASIC .AF   4           SET   .SV  14
+FBOOT .SV   2 03/28/76  BASIC .FF   4           BATCH .SV  10
+FOTP  .SV   8           BASIC .SF   4           FUTIL .SV  26 02/15/71
+HELP  .HL  55           BASIC .SV   9           IDS   .SV   5
+
+  36 FILES IN  437 BLOCKS -    1 FREE BLOCKS
+
+ ------ os8f4 ------
+
+SYS  VOLUME--   1
+FORTRAN IV     SYS:=RX8E
+OS/8 SYSTEM   VERSION   3Q
+
+BUILD .SV  33           PASS2 .SV  20 07/21/77  FORLIB.RL 170 07/05/77
+CCL   .SV  18           PASS20.SV   5 07/21/77  BOOT  .SV   5 01/16/71
+DIRECT.SV   7           PASS3 .SV   8 07/21/77  BATCH .SV  10
+EDIT  .SV  10 06/09/73  RALF  .SV  19 07/05/77  FUTIL .SV  26 02/15/71
+FOTP  .SV   8           LOAD  .SV  16 07/05/77  LCSYS .BI   3
+RESORC.SV  10           FRTS  .SV  26 10/04/71  UCSYS .BI   3
+F4    .SV  20 07/21/77  LIBRA .SV  11 07/05/77  IDS   .SV   5
+
+  21 FILES IN  433 BLOCKS -    5 FREE BLOCKS
+
+ ------ ===== ------
+
+NOTE:  Johnny Billquist at Uppsala University has reported an error in the
+file names assigned on the os8f4 disk; it appears that the file named
+PASS20.SV should be named PASS2O.SV (the zero should be a capital O).
+I believe that this disk image is a near-virgin copy of the original
+distribution, so this error may have been in the original distribution and
+therefore is not fixed here!  You will have to rename this file in order
+to use the FORTRAN IV compiler.
+

@@ -1,0 +1,80 @@
+/               MINIMAL PDP-8 BOOTSTRAP PROGRAM (RX)
+/
+/ Taken from a manual for an 8/e disk subsystem built by DSD;
+/ shorter and easier to toggle in than DECs bootstrap.
+
+/ The following is a minimal length boot program for both
+/ the RX01 and RX02.  This boot tries only the specified
+/ drive with the specified density.  Start at location 32 to
+/ BOOT drive 0.  Start at location 22 to boot drive 1.
+/ This has been verified to work with an OS/8 diskette.
+
+/ the contents of locations 60 and 61 can be fudged to
+/ change what disk and what density are used.
+
+/ configuration section
+
+IOTADR=	0750		/ default system drive is at IOT 75
+
+DRIVE0= 0000
+DRIVE1= 0020
+DRIVE=  DRIVE0		/ set to either DRIVE0 or DRIVE1
+
+SINGLE= 0000
+DOUBLE= 0400
+DENSTY= SINGLE		/ set to either SINGLE or DOUBLE
+
+/ RX01 and other opcode definitions
+
+LCD=	6001+IOTADR
+XDR=	6002+IOTADR
+STR=	6003+IOTADR
+SDN=	6005+IOTADR
+
+NL001=	CLA CLL IAC
+NL002=	CLA CLL IAC RAL
+NL006=	CLA CLL CML IAC RTL
+
+/ THIS SECTION IS NEEDED ONLY WHEN BOOTING FROM DRIVE 1.
+/ READS IN SECTOR 1 TRACK 1 ON DRIVE O OR 1.
+
+*22
+BOTDV1, SDN		/ START HERE TO BOOT DRIVE 1.
+	NOP		/ SKIP THIS WHEN CLEARING FLAG
+	NL006		/ SET AC=6
+	TAD	UNIT	/ MAKE INTO READ SECTOR COMMAND
+	LCD		/ COMMAND = CONTROLLER
+	NL001		/ SET AC TO 1 FOR SECTOR, TRACK
+	JMS	LOAD    / SEND SECTOR TO CONTROLLER
+	JMS	LOAD	/ SEND TRACK TO CONTROLLER
+
+/ DOES NOT USE LOCATIONS 22-31 WHEN STARTED AT 32
+
+/ START HERE TO BOOT DRIVE 0 (ASSUME MASTER CLEAR HAS
+/ READ DRIVE 0 TRACK 1 SECTOR 1 FOR YOU).
+
+*32
+BOTDV0,	NL002		/ MAKE EMPTY BUFFER COMMAND
+CHKFLG,	SDN		/ WAIT FOR DONE FLAG UP
+	JMP	LOAD+1	/ NO - CHECK FOR READY TRANSFER
+	TAD	UNIT    / YES-PUT IN READ UNIT, DENSITY
+	LCD		/ SEND EMPTY BUFFER COMMAND
+	JMP	BOTLP	/ START TO LOAD SECTOR BUFFER
+
+*47	/////////////////
+
+BOTLP,	JMS	LOAD	/ READ NEXT WORD FROM SILO
+	DCA	2	/ START LOADING AT LOC. 2
+	ISZ	.-1	/ BUMP LOAD ADDRESS
+	JMP	BOTLP	/ CONTINUE EMPTYING BUFFER
+/
+LOAD,	.-.		/ DATA TRANSFER SUBROUTINE
+	STR		/ SKIP IF CONTROLLER WILL SPEAK
+	JMP	CHKFLG	/ NO - CHECK IF FINISHED
+	XDR		/ TRANSFER DATA IN OR OUT
+	JMP I	LOAD	/ RETURN TO CALLER
+/
+	7004+DRIVE	/ USED BY SECONDARY BOOT
+                        / TO SELECT DRIVE 0 OR DRIVE 1
+UNIT,	DENSTY+DRIVE	/ WHAT TRANSPORT, WHAT DENSITY?
+$

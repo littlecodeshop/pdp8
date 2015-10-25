@@ -1,0 +1,44 @@
+/ rx01 boot, from DEC RX01/02 Reference Card, 1979.
+
+/ minimally disassembled and commented by Douglas Jones, 1994.
+/ this code has been verified to work.  It boots OS/8 correctly,
+/ when started at 0033!
+
+X=0050 / device address of RX01 is 75.
+
+*0024
+7126	/ 24 L,	CLL CML RTL
+1060	/ 25	TAD 60
+6701+X	/ 26	LCD
+7201	/ 27    CLA IAC	/AC = 1
+4053	/ 30	JMS P
+4053	/ 31	JMS P
+7104	/ 32	CLL RAR
+6705+X	/ 33 S,	SDN	/ start here, AC=0?  perhaps AC needs to be 0002?
+5054	/ 34	JMP P+1 /   strange, but does poll til done, unless xfer req.
+6704+X	/ 35	SER	/ if not OK (result of reset on drive zero), skip.
+7450	/ 36	SNA	/ if no error, check AC.
+7610	/ 37	SKP CLA / error or AC is zero; CLA.
+5046	/ 40	JMP N	/ no error and AC nonzero.
+1060	/ 41	TAD 60	/here AC=0, there was error
+7041	/ 42	CMA IAC	/complement
+1061	/ 43	TAD 61	/subtract 60
+3060	/ 44	DCA 60	/60 = 61 - 60
+5024	/ 45	JMP L
+
+      /      N,		/ here only if done, no error, nonzero AC, move data!
+6701+X/44 46 	LCD	/ command = AC? set AC=0
+4053  /45 47 T,	JMS P	/ call proc (AC=0)
+3002  /46 50	DCA 2	/ store result in M; set AC=0
+2050  /47 51	ISZ .-1	/ bump M
+5047  /50 52	JMP T 	/ loop
+
+0000	/ 53 P, .-.
+6703+X	/ 54	STR	/ skip if transfer request
+5033	/ 55	JMP S	/   strange, but does poll till xfer req, unless done
+6702+X	/ 56	XDR	/ transfer data
+5453	/ 57	JMP I P / return
+
+7024	/ 60	/ initially, the command
+6030	/ 61	/ the command toggler
+$

@@ -1,0 +1,27 @@
+The diskette images in this file have the following format:
+
+   Bytes 0 to 255 -- header
+
+      bytes 0 to 3 are "rx01" -- the magic number that prevents mounting
+      an rx01 format file to emulate some other kind of device.
+
+      bytes 4 to 255 are the deleted data bits, 8*251 bits is 2008, allowing
+      one bit for each of the 2002 sectors, with the 6 most significant bits
+      of byte 255 unused.  The deleted data bit for track 0 sector 1 is the
+      least significant bit of byte 4.  No known use is made of these bits
+      on a real RX01 by any program other than the diagnostics.
+
+   Bytes 255 to 256511
+
+      There are 77 tracks of data, tracks 0 to 76, stored consecutively.
+
+      Within each track, there are 26 sectors of data, sectors 1 to 26,
+      stored consecutively in the order of physical sector number, making
+      2002 total sectors.  No record is maintained of format-time
+      interleaving of the diskette (DEC's preformatted RX01 disks were not
+      interleaved at this level).  Physical sector numbers are not the same
+      as the logical sector numbers seen by RX01 users under OS/8 or RT/11!
+
+      Within each sector, there are 128 bytes, stored consecutively, making
+      256256 total bytes of data.
+

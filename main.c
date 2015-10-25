@@ -99,6 +99,11 @@ unsigned short realAddress(unsigned short value)
 
     //printf("real address :%04o\n",addr);
 
+    //si indirect je dois voir si il faut pas faire un autoindex
+    if(indirect&&(addr>=010)&&(addr<=017)){
+        printf("AUTOINDEX AT %04o",addr);
+        memory[addr] = memory[addr]+1;
+    }
     //si indirect -> c'est un pointeur sinon on renvois l'address
     return indirect?memory[addr]:addr;
 
@@ -314,7 +319,7 @@ void execute(unsigned short word)
     unsigned char zeropage = (word & 0x80)>>7;
     unsigned char address = (word & 0x7F);
 
-    //printf("\n=> %s IND %d ZP %d ADDR:%o \n",opcode_label[op],indirect,zeropage,address);
+    printf("\n=> %s IND %d ZP %d ADDR:%o \n",opcode_label[op],indirect,zeropage,address);
 
     pdp8_exec[op](word);
 }
@@ -394,13 +399,33 @@ int main(int argc, char ** argv){
     cpu.SR = 05002;
     deposit();
 
+    //////// ADDITION
+    cpu.SR = 0200;
+    loadAddress();
+    cpu.SR = 07200;
+    deposit();
+    cpu.SR = 01205;
+    deposit();
+    cpu.SR = 01206;
+    deposit();
+    cpu.SR = 07402;
+    deposit();
+    cpu.SR = 05577;
+    deposit();
+    cpu.SR = 00003;
+    deposit();
+    cpu.SR = 00004;
+    deposit();
 
-    cpu.SR = 00000; //address de base
+
+
+    cpu.SR = 0200; //address de base
     loadAddress();
 
     cpu.HALT = 0;
 
     while(!cpu.HALT){
+        dumpCpu();
         singleInstruction();
         getchar(); 
     }
