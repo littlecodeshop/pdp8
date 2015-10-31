@@ -1,6 +1,7 @@
 //Reference card :
 //http://homepage.cs.uiowa.edu/~jones/pdp8/refcard/74.html
 #include <stdio.h>
+#include <stdlib.h>
 
 typedef enum {
     AND = 0,
@@ -20,6 +21,7 @@ typedef enum {
     BREAK = 3
 } majorState;
 
+int focal_loaded = 0;
 struct pdp8cpu{
 
     unsigned short ACL;
@@ -44,6 +46,16 @@ struct teletypeASR33 {
 
 };
 
+struct tapereader750c {
+    unsigned char reader_flag;
+    unsigned char reader_buffer;
+    char * file_buffer;
+    long buffer_pos;
+    long buffer_size;
+};
+
+
+
 char * opcode_label[] = {
     "AND","TAD","ISZ","DCA","JMS","JMP","IOT","OPR"
 };
@@ -51,12 +63,71 @@ char * opcode_label[] = {
 //le hardware 
 struct pdp8cpu cpu;
 struct teletypeASR33 teletype;
+struct tapereader750c tapereader;
 unsigned short memory[0xFFF]; //4096 mots de memoire (pas d'extension :))
 
+void loadtext(char * filename){
+    FILE * fp;
+    char * line = NULL;
+    size_t len = 0;
+    ssize_t read;
+
+    fp = fopen(filename, "r");
+    if (fp == NULL)
+        exit(EXIT_FAILURE);
+
+    unsigned short addr,val;
+    while ((read = getline(&line, &len, fp)) != -1) {
+        printf("Retrieved line of length %zu :\n", read);
+        printf("%s", line);
+        sscanf(line,"%ho\t%ho\n",&addr,&val);
+        printf("ADDR :%04o \tVAL :%04o\n",addr,val);
+        memory[addr] = val;
+
+    }
+
+    fclose(fp);
+    if (line)
+        free(line);
+}
+
+void loadfile(char * filename){
+    //load a file in the reader 
+
+    FILE * pFile;
+    long lSize;
+    char * buffer;
+    size_t result;
+
+    pFile = fopen ( filename , "rb" );
+    if (pFile==NULL) {fputs ("File error",stderr); exit (1);}
+
+    // obtain file size:
+    fseek (pFile , 0 , SEEK_END);
+    lSize = ftell (pFile);
+    rewind (pFile);
+
+    // allocate memory to contain the whole file:
+    buffer = (char*) malloc (sizeof(char)*lSize);
+    if (buffer == NULL) {fputs ("Memory error",stderr); exit (2);}
+
+    // copy the file into the buffer:
+    result = fread (buffer,1,lSize,pFile);
+    if (result != lSize) {fputs ("Reading error",stderr); exit (3);}
+
+    /* the whole file is now loaded in the memory buffer. */
+
+    // terminate
+    fclose (pFile);
+    //set the tape reader info
+    tapereader.file_buffer = buffer;
+    tapereader.buffer_pos = 0;
+    tapereader.buffer_size = lSize;
+}
 
 void dumpCpu()
 {
-    printf("ACL:%o PC:%o SR:%o\n",cpu.ACL,cpu.PC,cpu.SR);
+    printf("\nAC:%04o L:%01o PC:%o SR:%o\n",cpu.ACL,(cpu.ACL&010000),cpu.PC,cpu.SR);
 }
 
 void dumpMemory(unsigned short addr)
@@ -133,6 +204,7 @@ void ISZY(unsigned short value)
 void DCAY(unsigned short value)
 {
     unsigned short addr = realAddress(value);
+    printf("JE DEPOSE %04o sur %04o",(cpu.ACL&07777),addr);
     memory[addr] = cpu.ACL;
     cpu.ACL = cpu.ACL&010000; //je masque le L bit car pas affecté !
 }
@@ -166,12 +238,14 @@ void IOTV(unsigned short value)
             cpu.ACL&=010000;
             break;
         case 06034:
-            {printf(">>>>>KRS<<<<<\n");
+            {
+                printf(">>>>>KRS<<<<<\n");
             unsigned short tmp = (unsigned short)teletype.tti_buffer;
             cpu.ACL = (cpu.ACL&017400)|tmp;}
             break;
         case 06036:
-            {printf(">>>>>KRB<<<<<\n");
+            {
+                printf(">>>>>KRB<<<<<\n");
             teletype.kbd_flag = 0;
             cpu.ACL&=010000;
             unsigned short tmp = (unsigned short)teletype.tti_buffer;
@@ -197,6 +271,50 @@ void IOTV(unsigned short value)
             teletype.prt_flag = 0;
             teletype.tto_buffer = (unsigned char)cpu.ACL;
             printf(">>>>>TLS<<<<< CHAR : %c %d\n",teletype.tto_buffer,teletype.tto_buffer);
+            break;
+        case 06011:
+            printf("RSF\n");
+            if(tapereader.reader_flag){
+                cpu.PC++;
+            }
+            break;
+        case 06012:
+            {
+                unsigned short tmp = (unsigned short)tapereader.reader_buffer;
+                cpu.ACL = (cpu.ACL&017400)|tmp;
+                //printf("RRB %c\n",tapereader.reader_buffer);
+            }
+            break;
+        case 06014:
+            {
+                printf("RFC\n");
+                tapereader.reader_flag = 0;
+                if(tapereader.buffer_pos<tapereader.buffer_size){
+                    tapereader.reader_buffer = tapereader.file_buffer[tapereader.buffer_pos++];
+                    tapereader.reader_flag = 1;
+                    //printf("READING BYTE -> %02x\n",tapereader.reader_buffer);
+                }
+                else{
+                focal_loaded = 1;
+                }
+            }
+            break;
+        case 06016:
+            {
+                printf("RFC RRB\n");
+                tapereader.reader_flag = 0;
+                if(tapereader.buffer_pos<tapereader.buffer_size){
+                    tapereader.reader_buffer = tapereader.file_buffer[tapereader.buffer_pos++];
+                    tapereader.reader_flag = 1;
+                    printf("READING BYTE -> %02x\n",tapereader.reader_buffer);
+                }
+                else{
+                focal_loaded = 1;
+                }
+                unsigned short tmp = (unsigned short)tapereader.reader_buffer;
+                cpu.ACL = (cpu.ACL&017400)|tmp;
+                printf("RRB %c\n",tapereader.reader_buffer);
+            }
             break;
 
         default:
@@ -252,11 +370,13 @@ void OPRGRP2(unsigned short value)
         }
         if(value&0100){ //SMA/SPA
             if(value&010){//SPA
-                if((cpu.ACL&04000)==0){
+                printf("SPA\n");
+                if((cpu.ACL&04000)){
                     cpu.PC++;
                 }
             }else{//SMA
-                if(cpu.ACL&04000){
+                printf("SMA\n");
+                if((cpu.ACL&04000)==0){
                     cpu.PC++;
                 }
             }
@@ -326,12 +446,12 @@ void execute(unsigned short word)
 
 void singleInstruction()
 {
+    dumpCpu();
     //fetch
     unsigned short next_op = memory[cpu.PC++];
     //execute ??
     execute(next_op);
 
-    //dumpCpu();
 
 }
 
@@ -348,6 +468,47 @@ int main(int argc, char ** argv){
     };
 
     version();
+
+    //RIM LOADER
+    cpu.SR = 07756;
+    loadAddress();
+    cpu.SR = 06014;                      /* 7756, RFC */
+    deposit();
+    cpu.SR = 06011;                      /* 7757, LOOP, RSF */
+    deposit();
+    cpu.SR = 05357;                      /* JMP .-1 */
+    deposit();
+    cpu.SR = 06016;                      /* RFC RRB */
+    deposit();
+    cpu.SR = 07106;                      /* CLL RTL*/
+    deposit();
+    cpu.SR = 07006;                      /* RTL */
+    deposit();
+    cpu.SR = 07510;                      /* SPA*/
+    deposit();
+    cpu.SR = 05374;                      /* JMP 7774 */
+    deposit();
+    cpu.SR = 07006;                      /* RTL */
+    deposit();
+    cpu.SR = 06011;                      /* RSF */
+    deposit();
+    cpu.SR = 05367;                      /* JMP .-1 */
+    deposit();
+    cpu.SR = 06016;                      /* RFC RRB */
+    deposit();
+    cpu.SR = 07420;                      /* SNL */
+    deposit();
+    cpu.SR = 03776;                      /* DCA I 7776 */
+    deposit();
+    cpu.SR = 03376;                      /* 7774, DCA 7776 */
+    deposit();
+    cpu.SR = 05357;                      /* JMP 7757 */
+    deposit();
+    cpu.SR = 00000;                      /* 7776, 0 */
+    deposit();
+    cpu.SR = 00000;                      /* 7777, JMP 7701 */
+    deposit();
+    
 
     //load the program //increment memory  
     cpu.SR = 05555; //address de base
@@ -419,15 +580,30 @@ int main(int argc, char ** argv){
 
 
 
-    cpu.SR = 0200; //address de base
+    cpu.SR = 07756; //address de base
     loadAddress();
 
     cpu.HALT = 0;
 
-    while(!cpu.HALT){
-        dumpCpu();
-        singleInstruction();
-        getchar(); 
-    }
+    //loadfile("loader.bin"); //load that paper tape in the machine
+    loadtext("focal.txt");
+
+    //Load focal
+    //while(!focal_loaded){
+    //    singleInstruction();
+    //    dumpMemory(07776);
+    //    dumpCpu();
+    //    getchar();
+    //}
+
+    //start FOCAL :)
+    printf("STARTING FOCAL\n");
+    dumpMemory(0200);
+//    cpu.SR = 0200;
+//    loadAddress();
+//    while(!cpu.HALT){
+//        singleInstruction();
+//    }
+
     
 }
