@@ -230,8 +230,6 @@ void IOTV(unsigned short value)
     switch(value){
         case 06031:
             //printf(">>>>>KSF<<<<<\n");
-            dumpCpu();
-            getchar();
             if(teletype.kbd_flag)
             {
                 cpu.PC++;
@@ -245,16 +243,12 @@ void IOTV(unsigned short value)
         case 06034:
             {
              //   printf(">>>>>KRS<<<<<\n");
-            dumpCpu();
-            getchar();
             unsigned short tmp = (unsigned short)teletype.tti_buffer;
             cpu.ACL = (cpu.ACL&017400)|tmp;}
             break;
         case 06036:
             {
               //  printf(">>>>>KRB<<<<<\n");
-            dumpCpu();
-            getchar();
             teletype.kbd_flag = 0;
             cpu.ACL&=010000;
             unsigned short tmp = (unsigned short)teletype.tti_buffer;
@@ -267,8 +261,7 @@ void IOTV(unsigned short value)
             {
                 cpu.PC++;
             }
-            dumpCpu();
-            getchar();
+            //getchar();
             break;
         case 06042:
             //printf(">>>>>TCF<<<<<\n");
@@ -276,14 +269,12 @@ void IOTV(unsigned short value)
             break;
         case 06044:
             teletype.tto_buffer = (unsigned char)cpu.ACL;
-            printf(">>>>>TPC<<<<< CHAR : %c\n",teletype.tto_buffer);
-            getchar();
+            printf("%c",teletype.tto_buffer&0177);
             break;
         case 06046:
             teletype.prt_flag = 0;
             teletype.tto_buffer = (unsigned char)cpu.ACL;
-            printf(">>>>>TLS<<<<< CHAR : %c %d\n",teletype.tto_buffer,teletype.tto_buffer);
-            getchar();
+            printf("%c",teletype.tto_buffer&0177);
             break;
         case 06011:
             //printf("RSF\n");
@@ -410,7 +401,7 @@ void OPRGRP2(unsigned short value)
                 break;
             case 07430: //SZL
                 if((cpu.ACL&010000)==0){
-                    printf("SZL ACL = %05o\n",cpu.ACL);
+                    //printf("SZL ACL = %05o\n",cpu.ACL);
                     cpu.PC = (cpu.PC+1)&07777;
                 }
                 break;
@@ -488,14 +479,14 @@ void OPRGRP2(unsigned short value)
                 cpu.ACL&=010000;
                 break;
             case 07620: //SNL CLA
-                printf("SNL CLA AC == %04o\n",cpu.ACL&07777);
+                //printf("SNL CLA AC == %04o\n",cpu.ACL&07777);
                 if((cpu.ACL&010000)!=0){
                     cpu.PC = (cpu.PC+1)&07777;
                 }
                 cpu.ACL&=010000;
                 break;
             case 07630: //SZL CLA
-                printf("SZL CLA AC == %04o\n",cpu.ACL&07777);
+                //printf("SZL CLA AC == %04o\n",cpu.ACL&07777);
                 if((cpu.ACL&010000)==0){
                     cpu.PC = (cpu.PC+1)&07777;
                 }
@@ -558,7 +549,8 @@ void OPRGRP2(unsigned short value)
                 cpu.ACL&=010000;
                 break;
             default:
-                printf("******* %04o NOT IMPLEMENTED at %04o *********\n",value,cpu.PC);
+                //printf("******* %04o NOT IMPLEMENTED at %04o *********\n",value,cpu.PC);
+                break;
 
                 
 
@@ -566,7 +558,7 @@ void OPRGRP2(unsigned short value)
 
 
         if(value&02){ //HLT
-            printf("HALT");
+            //printf("HALT");
             cpu.HALT = 1;
         }
     } else {
@@ -766,7 +758,7 @@ int main(int argc, char ** argv){
     dumpMemory(07731);
     dumpMemory(07741);
 
-    loadfile("focal69.bin");
+    loadfile("maindec-08-d01a-pb.bin");
     cpu.SR = 07777; //address de base
     loadAddress();
     cpu.SR = 03777; //address de base
@@ -780,14 +772,18 @@ int main(int argc, char ** argv){
     getchar();
 
 
-    cpu.SR = 0200;
+    cpu.SR = 01200;
     loadAddress();
-    while(1){
-        
-        dumpCpu();
-        //dumpMemory(057);
+    cpu.SR = 07777;
+    int trace=0;
+    while(1){ 
+        //dumpCpu();
+        //if(cpu.PC==04730)
+        //    trace=1;
+        if(trace)
+            getchar();
+        //dumpMemory(00);
         singleInstruction();
-        getchar();
     }
 
 
