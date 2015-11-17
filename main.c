@@ -2,6 +2,11 @@
 //http://homepage.cs.uiowa.edu/~jones/pdp8/refcard/74.html
 #include <stdio.h>
 #include <stdlib.h>
+#include <termios.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <string.h>
 
 typedef enum {
     AND = 0,
@@ -32,6 +37,8 @@ struct pdp8cpu{
     unsigned char IR;
 
     unsigned char HALT;
+
+    unsigned char INTER;
 
     //current state
     majorState state;
@@ -65,6 +72,48 @@ struct pdp8cpu cpu;
 struct teletypeASR33 teletype;
 struct tapereader750c tapereader;
 unsigned short memory[0xFFF]; //4096 mots de memoire (pas d'extension :))
+
+
+struct termios orig_termios;
+
+void reset_terminal_mode()
+{
+    tcsetattr(0, TCSANOW, &orig_termios);
+}
+
+void set_conio_terminal_mode()
+{
+    struct termios new_termios;
+
+    /* take two copies - one for now, one for later */
+    tcgetattr(0, &orig_termios);
+    memcpy(&new_termios, &orig_termios, sizeof(new_termios));
+
+    /* register cleanup handler, and set the new terminal mode */
+    atexit(reset_terminal_mode);
+    cfmakeraw(&new_termios);
+    tcsetattr(0, TCSANOW, &new_termios);
+}
+
+int kbhit()
+{
+    struct timeval tv = { 0L, 0L };
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(0, &fds);
+    return select(1, &fds, NULL, NULL, &tv);
+}
+
+int getch()
+{
+    int r;
+    unsigned char c;
+    if ((r = read(0, &c, sizeof(c))) < 0) {
+        return r;
+    } else {
+        return c;
+    }
+}
 
 void loadtext(char * filename){
     FILE * fp;
@@ -206,7 +255,9 @@ void ISZY(unsigned short value)
 void DCAY(unsigned short value)
 {
     unsigned short addr = realAddress(value);
-    //printf("JE DEPOSE %04o sur %04o\n",(cpu.ACL&07777),addr);
+    if(addr==03120){
+        printf("JE DEPOSE %04o sur %04o\n",(cpu.ACL&07777),addr);
+    }
     memory[addr] = (cpu.ACL)&07777;
     cpu.ACL = cpu.ACL&010000; //je masque le L bit car pas affecté !
 }
@@ -229,7 +280,12 @@ void IOTV(unsigned short value)
 {
     switch(value){
         case 06031:
-            //printf(">>>>>KSF<<<<<\n");
+            //***********************
+            printf(">>>>>KSF<<<<<\n");
+            teletype.tti_buffer = (char)getchar();
+            printf("tti_buffer : %d\n",teletype.tti_buffer);
+            teletype.kbd_flag = 1;
+            //***********************
             if(teletype.kbd_flag)
             {
                 cpu.PC++;
@@ -242,13 +298,13 @@ void IOTV(unsigned short value)
             break;
         case 06034:
             {
-             //   printf(">>>>>KRS<<<<<\n");
+            //printf(">>>>>KRS<<<<<\n");
             unsigned short tmp = (unsigned short)teletype.tti_buffer;
             cpu.ACL = (cpu.ACL&017400)|tmp;}
             break;
         case 06036:
             {
-              //  printf(">>>>>KRB<<<<<\n");
+            //printf(">>>>>KRB<<<<<\n");
             teletype.kbd_flag = 0;
             cpu.ACL&=010000;
             unsigned short tmp = (unsigned short)teletype.tti_buffer;
@@ -270,11 +326,13 @@ void IOTV(unsigned short value)
         case 06044:
             teletype.tto_buffer = (unsigned char)cpu.ACL;
             printf("%c",teletype.tto_buffer&0177);
+            //getchar();
             break;
         case 06046:
             teletype.prt_flag = 0;
             teletype.tto_buffer = (unsigned char)cpu.ACL;
             printf("%c",teletype.tto_buffer&0177);
+            //getchar();
             break;
         case 06011:
             //printf("RSF\n");
@@ -326,7 +384,21 @@ void IOTV(unsigned short value)
             }
             break;
 
+        case 06000:
+            if(cpu.INTER)
+                cpu.PC++;
+            break;
+        case 06001:
+            cpu.INTER = 1;
+            break;
+        case 06002:
+            cpu.INTER = 0;
+            break;
+
+
+
         default:
+            printf(">>>>>>>>>>> UNHANDLED %04o before %04o\n",value,cpu.PC);
             break;
     
     }
@@ -549,7 +621,7 @@ void OPRGRP2(unsigned short value)
                 cpu.ACL&=010000;
                 break;
             default:
-                //printf("******* %04o NOT IMPLEMENTED at %04o *********\n",value,cpu.PC);
+                printf("******* %04o NOT IMPLEMENTED at %04o *********\n",value,cpu.PC);
                 break;
 
                 
@@ -558,7 +630,7 @@ void OPRGRP2(unsigned short value)
 
 
         if(value&02){ //HLT
-            //printf("HALT");
+            printf("HALT");
             cpu.HALT = 1;
         }
     } else {
@@ -587,7 +659,7 @@ void execute(unsigned short word)
     unsigned char zeropage = (word & 0x80)>>7;
     unsigned char address = (word & 0x7F);
 
-    //printf("\n=> %s IND %d ZP %d ADDR:%o \n",opcode_label[op],indirect,zeropage,address);
+    //printf("\n=> %s IND %d ZP %d ADDR:%o PC ->%04o\n",opcode_label[op],indirect,zeropage,address,cpu.PC);
 
     pdp8_exec[op](word);
 }
@@ -616,6 +688,8 @@ int main(int argc, char ** argv){
     };
 
     version();
+
+    teletype.kbd_flag = 0;
 
     //RIM LOADER
     cpu.SR = 07756;
@@ -758,7 +832,7 @@ int main(int argc, char ** argv){
     dumpMemory(07731);
     dumpMemory(07741);
 
-    loadfile("maindec-08-d01a-pb.bin");
+    loadfile("focal69.bin");
     cpu.SR = 07777; //address de base
     loadAddress();
     cpu.SR = 03777; //address de base
@@ -769,21 +843,37 @@ int main(int argc, char ** argv){
     }
     printf("focal is loaded\n");
     dumpMemory(0200);
-    getchar();
+    //getchar();
 
 
-    cpu.SR = 01200;
+    cpu.SR = 0200;
     loadAddress();
-    cpu.SR = 07777;
+    cpu.SR = 03777;
     int trace=0;
     while(1){ 
         //dumpCpu();
         //if(cpu.PC==04730)
         //    trace=1;
-        if(trace)
+        if(trace){
+            dumpCpu();
             getchar();
+        }
         //dumpMemory(00);
+        //dumpCpu();
         singleInstruction();
+
+        //if(kbhit()){
+        //   int c = getch();
+        //   printf("kbhit !!! %d\n",c);
+        //   teletype.tti_buffer = (char)c;
+        //   teletype.kbd_flag = 1;
+        //}
+        /*int c = mygetch();
+        if(c!=-1){
+            printf("youhou %c",(char)c);
+           teletype.tti_buffer = (char)c;
+           teletype.kbd_flag = 1;
+        }*/
     }
 
 
