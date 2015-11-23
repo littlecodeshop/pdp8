@@ -74,46 +74,6 @@ struct tapereader750c tapereader;
 unsigned short memory[0xFFF]; //4096 mots de memoire (pas d'extension :))
 
 
-struct termios orig_termios;
-
-void reset_terminal_mode()
-{
-    tcsetattr(0, TCSANOW, &orig_termios);
-}
-
-void set_conio_terminal_mode()
-{
-    struct termios new_termios;
-
-    /* take two copies - one for now, one for later */
-    tcgetattr(0, &orig_termios);
-    memcpy(&new_termios, &orig_termios, sizeof(new_termios));
-
-    /* register cleanup handler, and set the new terminal mode */
-    atexit(reset_terminal_mode);
-    cfmakeraw(&new_termios);
-    tcsetattr(0, TCSANOW, &new_termios);
-}
-
-int kbhit()
-{
-    struct timeval tv = { 0L, 0L };
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(0, &fds);
-    return select(1, &fds, NULL, NULL, &tv);
-}
-
-int getch()
-{
-    int r;
-    unsigned char c;
-    if ((r = read(0, &c, sizeof(c))) < 0) {
-        return r;
-    } else {
-        return c;
-    }
-}
 
 void loadtext(char * filename){
     FILE * fp;
@@ -281,10 +241,10 @@ void IOTV(unsigned short value)
     switch(value){
         case 06031:
             //***********************
-            printf(">>>>>KSF<<<<<\n");
-            teletype.tti_buffer = (char)getchar();
-            printf("tti_buffer : %d\n",teletype.tti_buffer);
-            teletype.kbd_flag = 1;
+            //printf(">>>>>KSF<<<<<\n");
+            //teletype.tti_buffer = (char)getchar();
+            //printf("tti_buffer : %d\n",teletype.tti_buffer);
+            //teletype.kbd_flag = 1;
             //***********************
             if(teletype.kbd_flag)
             {
@@ -298,7 +258,7 @@ void IOTV(unsigned short value)
             break;
         case 06034:
             {
-            //printf(">>>>>KRS<<<<<\n");
+            printf(">>>>>KRS<<<<<\n");
             unsigned short tmp = (unsigned short)teletype.tti_buffer;
             cpu.ACL = (cpu.ACL&017400)|tmp;}
             break;
@@ -325,13 +285,19 @@ void IOTV(unsigned short value)
             break;
         case 06044:
             teletype.tto_buffer = (unsigned char)cpu.ACL;
-            printf("%c",teletype.tto_buffer&0177);
+            printf(">> %c %d PC %04o",teletype.tto_buffer&0177,teletype.tto_buffer&0177,cpu.PC);
             //getchar();
             break;
         case 06046:
             teletype.prt_flag = 0;
             teletype.tto_buffer = (unsigned char)cpu.ACL;
-            printf("%c",teletype.tto_buffer&0177);
+            printf(">> %c %d PC %04o",teletype.tto_buffer&0177,teletype.tto_buffer&0177,cpu.PC);
+            //getchar();
+            break;
+        case 06346://FIXME : je sais pas pour ca
+            teletype.prt_flag = 0;
+            teletype.tto_buffer = (unsigned char)cpu.ACL;
+            printf(">> %c %d PC %04o",teletype.tto_buffer&0177,teletype.tto_buffer&0177,cpu.PC);
             //getchar();
             break;
         case 06011:
@@ -354,7 +320,7 @@ void IOTV(unsigned short value)
                 if(tapereader.buffer_pos<tapereader.buffer_size){
                     tapereader.reader_buffer = tapereader.file_buffer[tapereader.buffer_pos++];
                     tapereader.reader_flag = 1;
-                    printf("READING BYTE -> %02x POSITION : %ld\n",tapereader.reader_buffer,tapereader.buffer_pos);
+                    //printf("READING BYTE -> %02x POSITION : %ld\n",tapereader.reader_buffer,tapereader.buffer_pos);
                 }
                 else{
                 focal_loaded = 1;
@@ -368,7 +334,7 @@ void IOTV(unsigned short value)
                 if(tapereader.buffer_pos<tapereader.buffer_size){
                     tapereader.reader_buffer = tapereader.file_buffer[tapereader.buffer_pos++];
                     tapereader.reader_flag = 1;
-                    printf("READING BYTE -> %02x POSITION : %ld\n",tapereader.reader_buffer,tapereader.buffer_pos);
+                    //printf("READING BYTE -> %02x POSITION : %ld\n",tapereader.reader_buffer,tapereader.buffer_pos);
                 }
                 else{
                 focal_loaded = 1;
@@ -547,7 +513,8 @@ void OPRGRP2(unsigned short value)
                 cpu.ACL&=010000;
                 cpu.ACL |= cpu.SR;
                 break;
-            case 07610:
+            case 07610: //CLA SKP
+                cpu.PC = (cpu.PC+1)&07777;
                 cpu.ACL&=010000;
                 break;
             case 07620: //SNL CLA
@@ -826,19 +793,15 @@ int main(int argc, char ** argv){
     }
     printf("loader is loaded\n");
 
-    dumpMemory(07701);
-    dumpMemory(07711);
-    dumpMemory(07721);
-    dumpMemory(07731);
-    dumpMemory(07741);
-
-    loadfile("focal69.bin");
+    loadfile("focal.bin");
     cpu.SR = 07777; //address de base
     loadAddress();
-    cpu.SR = 03777; //address de base
+    cpu.SR = 00000;
+
+    printf("I START HERE\n");
 
     while(!cpu.HALT){
-     //   dumpCpu();
+        //dumpCpu();
         singleInstruction();
     }
     printf("focal is loaded\n");
@@ -848,60 +811,19 @@ int main(int argc, char ** argv){
 
     cpu.SR = 0200;
     loadAddress();
-    cpu.SR = 03777;
+    cpu.SR = 0000;
     int trace=0;
     while(1){ 
-        //dumpCpu();
-        //if(cpu.PC==04730)
-        //    trace=1;
+        if(cpu.PC == 0177){
+            //trace=1;
+        }
         if(trace){
             dumpCpu();
             getchar();
         }
-        //dumpMemory(00);
-        //dumpCpu();
         singleInstruction();
 
-        //if(kbhit()){
-        //   int c = getch();
-        //   printf("kbhit !!! %d\n",c);
-        //   teletype.tti_buffer = (char)c;
-        //   teletype.kbd_flag = 1;
-        //}
-        /*int c = mygetch();
-        if(c!=-1){
-            printf("youhou %c",(char)c);
-           teletype.tti_buffer = (char)c;
-           teletype.kbd_flag = 1;
-        }*/
     }
-
-
-    //start FOCAL :)
-    //cpu.SR = 0200;
-    //loadAddress();
-    //while(!cpu.HALT){
-    //while(cpu.PC != 02661){
-    //    dumpCpu();
-    //    //getchar();
-    //    singleInstruction();
-    //}
-
-    //while(1){
-    //   // if(cpu.PC == 07774){
-    //   //     dumpCpu();
-    //   //     getchar();
-    //   // }
-    //   // if((cpu.ACL&07777)==07412){
-    //   //     printf("*******************************************on a 07412");
-    //   //     dumpCpu();
-    //   //     getchar();
-    //   // }
-
-    //        dumpCpu();
-    //        getchar();
-    //    singleInstruction();
-    //}
 
 
 }
