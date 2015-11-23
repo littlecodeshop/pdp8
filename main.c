@@ -364,7 +364,7 @@ void IOTV(unsigned short value)
 
 
         default:
-            printf(">>>>>>>>>>> UNHANDLED %04o before %04o\n",value,cpu.PC);
+            //printf(">>>>>>>>>>> UNHANDLED %04o before %04o\n",value,cpu.PC);
             break;
     
     }
@@ -514,6 +514,8 @@ void OPRGRP2(unsigned short value)
                 cpu.ACL |= cpu.SR;
                 break;
             case 07610: //CLA SKP
+		printf("CLA SKP IS HERE *********************");
+		getchar();
                 cpu.PC = (cpu.PC+1)&07777;
                 cpu.ACL&=010000;
                 break;
@@ -814,8 +816,9 @@ int main(int argc, char ** argv){
     cpu.SR = 0000;
     int trace=0;
     while(1){ 
-        if(cpu.PC == 0177){
-            //trace=1;
+        if(cpu.PC == 02474){
+            trace=1;
+printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>BREAn");
         }
         if(trace){
             dumpCpu();
