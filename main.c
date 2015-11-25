@@ -26,7 +26,10 @@ typedef enum {
     BREAK = 3
 } majorState;
 
+int time_to_next_inter = 0;
 int focal_loaded = 0;
+int interrupt_countdown = -1;
+
 struct pdp8cpu{
 
     unsigned short ACL;
@@ -160,7 +163,18 @@ void deposit()
     memory[cpu.PC++] = cpu.SR;
 }
 
-
+void interrupt()
+{
+    if(cpu.INTER){
+        //printf("INTERRUPT!!!!!!!!\n");
+        //interrupt c'est comme un JMS 0000
+        memory[00000] = cpu.PC;
+        //printf("JMS =============> I DEPOSIT %04o SUR %04o\n",cpu.PC,addr);
+        cpu.PC = (00001)&07777;
+        //reset interrupt 
+        cpu.INTER = 0;
+    }
+}
 
 unsigned short realAddress(unsigned short value)
 {
@@ -170,7 +184,6 @@ unsigned short realAddress(unsigned short value)
 
 
     //printf("currentPage : %d  \t CPU.PC : %04o\n",currentpage,cpu.PC);
-
 
 
 
@@ -215,9 +228,6 @@ void ISZY(unsigned short value)
 void DCAY(unsigned short value)
 {
     unsigned short addr = realAddress(value);
-    if(addr==03120){
-        printf("JE DEPOSE %04o sur %04o\n",(cpu.ACL&07777),addr);
-    }
     memory[addr] = (cpu.ACL)&07777;
     cpu.ACL = cpu.ACL&010000; //je masque le L bit car pas affecté !
 }
@@ -281,24 +291,22 @@ void IOTV(unsigned short value)
             break;
         case 06042:
             //printf(">>>>>TCF<<<<<\n");
-            teletype.prt_flag = 1;
+            teletype.prt_flag = 0;
             break;
         case 06044:
+            //TPC
             teletype.tto_buffer = (unsigned char)cpu.ACL;
-            printf(">> %c %d PC %04o",teletype.tto_buffer&0177,teletype.tto_buffer&0177,cpu.PC);
-            //getchar();
+            printf("%c",teletype.tto_buffer&0177);
+            fflush(stdout);
+            interrupt_countdown = 5000;
             break;
         case 06046:
+            //TLS
             teletype.prt_flag = 0;
             teletype.tto_buffer = (unsigned char)cpu.ACL;
-            printf(">> %c %d PC %04o",teletype.tto_buffer&0177,teletype.tto_buffer&0177,cpu.PC);
-            //getchar();
-            break;
-        case 06346://FIXME : je sais pas pour ca
-            teletype.prt_flag = 0;
-            teletype.tto_buffer = (unsigned char)cpu.ACL;
-            printf(">> %c %d PC %04o",teletype.tto_buffer&0177,teletype.tto_buffer&0177,cpu.PC);
-            //getchar();
+            printf("%c",teletype.tto_buffer&0177);
+            fflush(stdout);
+            interrupt_countdown = 5000;
             break;
         case 06011:
             //printf("RSF\n");
@@ -355,9 +363,11 @@ void IOTV(unsigned short value)
                 cpu.PC++;
             break;
         case 06001:
+            //printf("INTERRUPT ON\n");
             cpu.INTER = 1;
             break;
         case 06002:
+            //printf("INTERRUPT OFF\n");
             cpu.INTER = 0;
             break;
 
@@ -500,7 +510,7 @@ void OPRGRP2(unsigned short value)
                 }
                 break;
             case 07550://SPA SNA
-                if(((cpu.ACL&04000)==0)||(cpu.ACL&07777)){
+                if(((cpu.ACL&04000)==0)&&(cpu.ACL&03777)){
                     //printf("SPA SNA\n");
                     cpu.PC = (cpu.PC+1)&07777;
                 }
@@ -514,8 +524,8 @@ void OPRGRP2(unsigned short value)
                 cpu.ACL |= cpu.SR;
                 break;
             case 07610: //CLA SKP
-		printf("CLA SKP IS HERE *********************");
-		getchar();
+		//printf("CLA SKP IS HERE *********************");
+		//getchar();
                 cpu.PC = (cpu.PC+1)&07777;
                 cpu.ACL&=010000;
                 break;
@@ -815,17 +825,17 @@ int main(int argc, char ** argv){
     loadAddress();
     cpu.SR = 0000;
     int trace=0;
+
     while(1){ 
-        if(cpu.PC == 02474){
-            trace=1;
-printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>BREAn");
-        }
-        if(trace){
-            dumpCpu();
-            getchar();
+        if(interrupt_countdown > 0){
+            interrupt_countdown--;
+            if(interrupt_countdown == 0){
+                interrupt_countdown = -1;
+                interrupt();
+            }
+        
         }
         singleInstruction();
-
     }
 
 
