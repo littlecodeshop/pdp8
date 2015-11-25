@@ -1,11 +1,9 @@
 //Reference card :
 //http://homepage.cs.uiowa.edu/~jones/pdp8/refcard/74.html
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <termios.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/uio.h>
 #include <string.h>
 
 typedef enum {
@@ -26,7 +24,6 @@ typedef enum {
     BREAK = 3
 } majorState;
 
-int time_to_next_inter = 0;
 int focal_loaded = 0;
 int interrupt_countdown = -1;
 
@@ -48,12 +45,10 @@ struct pdp8cpu{
 };
 
 struct teletypeASR33 {
-
     unsigned char tti_buffer; //8 bit buffer contains the last typed char
     unsigned char kbd_flag; //1 when there is something ready in tti
     unsigned char tto_buffer; //8 bit buffer next char to be printed
     unsigned char prt_flag; //1 when ready to print next char
-
 };
 
 struct tapereader750c {
@@ -250,12 +245,7 @@ void IOTV(unsigned short value)
 {
     switch(value){
         case 06031:
-            //***********************
-            //printf(">>>>>KSF<<<<<\n");
-            //teletype.tti_buffer = (char)getchar();
-            //printf("tti_buffer : %d\n",teletype.tti_buffer);
-            //teletype.kbd_flag = 1;
-            //***********************
+            //KSF
             if(teletype.kbd_flag)
             {
                 cpu.PC++;
@@ -380,6 +370,14 @@ void IOTV(unsigned short value)
     }
 
 }
+
+void keyboard_input(unsigned char value){ 
+    teletype.kbd_flag = 1; // set the flag !
+    teletype.tti_buffer = value;
+    interrupt_countdown = 1; // tout de suite je fais l'interruption
+}
+
+
 
 
 void OPRGRP1(unsigned short value)
@@ -810,7 +808,6 @@ int main(int argc, char ** argv){
     loadAddress();
     cpu.SR = 00000;
 
-    printf("I START HERE\n");
 
     while(!cpu.HALT){
         //dumpCpu();
@@ -837,6 +834,5 @@ int main(int argc, char ** argv){
         }
         singleInstruction();
     }
-
 
 }
