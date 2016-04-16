@@ -701,12 +701,39 @@ void version()
     printf("====================================\n");
 }
 
+void help(char * prg_name)
+{
+    printf("Hello guys !\n");
+    printf("Usage %s \n",prg_name);
+}
+
 int main(int argc, char ** argv){
 
-    unsigned short program[] = {
-    };
+    int opt;
+    int index;
+    
+    printf("WILL DO OPTIONS !!");
+    while((opt = getopt(argc,argv,"hf:tip"))!=-1){
+        switch(opt){
+            printf("i have opt %c\n",(char)opt);
+            case 'f':
+                printf("LOADING FILE %s",optarg);
+            break;
+            case 'h':
+                help("pdp8");
+                break;
+            case 'v':
+                version();
+            break;
+            default:
+            printf("OPTION %d\n",(char)opt);
+            break;
+        }
+    }
 
-    version();
+    for (index = optind; index < argc; index++)
+        printf ("Non-option argument %s\n", argv[index]);
+    
 
     teletype.kbd_flag = 0;
 
@@ -840,7 +867,7 @@ int main(int argc, char ** argv){
     }
 
     for(int i=0;i<20;i++){
-        dumpCpu();
+        //dumpCpu();
         singleInstruction();
     }
     printf("loader is loaded\n");
@@ -865,6 +892,7 @@ int main(int argc, char ** argv){
     cpu.SR = 0000;
     int trace=0;
     
+    // n'oublis pas ca -> pour passer en mode raw (pas de delay apres key)
     set_conio_terminal_mode();
 
     while(1){ 
@@ -879,7 +907,8 @@ int main(int argc, char ** argv){
         singleInstruction();
         if(kbhit()){
             char c = getch();
-            //printf("=>>>>>%c\n",c);
+            if(c==3) exit(0);
+            //printf("=>>>>>%d\n",c);
             keyboard_input(c);
         }
     }
