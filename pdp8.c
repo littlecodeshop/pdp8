@@ -711,8 +711,7 @@ void registerTeletypeOutput(void (*tty_out)(char c)){
     tty_out_callback = tty_out;
 }
 
-int startPDP8(){
-
+void initPDP8(){
     teletype.kbd_flag = 0;
 
     /* normalement l'operateur entre le RIM loader a la main */
@@ -773,19 +772,16 @@ int startPDP8(){
     for(int i=0;i<20;i++){
         singleInstruction();
     }
+    
+}
+
+
+
+int startPDP8(){
+
 
     //load focal
-    loadfile("focal.bin");
-    cpu.SR = 07777; //address de base
-    loadAddress();
-    cpu.SR = 00000;
-
-
-    while(!cpu.HALT){
-        //dumpCpu();
-        singleInstruction();
-    }
-
+    //loadfile("focal.bin");
 
     cpu.SR = 0200;
     loadAddress();
@@ -872,10 +868,28 @@ int main(int argc, char ** argv){
     int opt;
     int index;
 
+    
+    initPDP8();
+
     while((opt = getopt(argc,argv,"vhf:"))!=-1){
         switch(opt){
             case 'f':
                 printf("LOADING FILE %s",optarg);
+                loadfile(optarg);
+                cpu.SR = 07777; //address de base
+                loadAddress();
+                cpu.SR = 00000;
+
+
+                while(!cpu.HALT){
+                    //dumpCpu();
+                    singleInstruction();
+                }
+
+
+                cpu.SR = 0200;
+                loadAddress();
+                cpu.SR = 0000;
                 break;
             case 'h':
                 help(argv[0]);
@@ -885,6 +899,22 @@ int main(int argc, char ** argv){
                 break;
             default:
                 //start focal
+                printf("LOADING FOCAL");
+                loadfile("focal.bin");
+                cpu.SR = 07777; //address de base
+                loadAddress();
+                cpu.SR = 00000;
+
+
+                while(!cpu.HALT){
+                    //dumpCpu();
+                    singleInstruction();
+                }
+
+
+                cpu.SR = 0200;
+                loadAddress();
+                cpu.SR = 0000;
                 break;
         }
     }

@@ -11,13 +11,13 @@ The CPU, memory, teletype and a tape reader are emulated.
 
 ## Building
     
-There is just one file to compile.    
+There is just one C file to compile.    
 
     cc pdp8.c -o pdp8
 
 ## Usage
 
-    ./pdp8
+    ./pdp8 focal.bin
 
 ## Contributing
 
@@ -27,8 +27,11 @@ There is just one file to compile.
 4. Push to the branch: `git push origin my-new-feature`
 5. Submit a pull request :D
 
+## TODO
 
-## Credits
+* Implement the CPU extensions
+* Emulate drives
+* Run OS8
 
 
 ## License
