@@ -1,0 +1,52 @@
+Core images for use with Doug Jones's PDP-8 emulator.  When available,
+source has also been included.  Core image files begin with the name
+of the emulator (pdp8e), followed by a packed core image.  If the
+emulator is installed as per the defaults, these core images should be
+executable under UNIX (they'll merely pull in the emulator and fire it
+up).  If not, you can execute them by typing "pdp8e <f>", assuming
+you've installed the PDP-8 emulator as the "pdp8e" command and that
+<f> is the name of the core image you want loaded.
+
+Contents:
+
+bin		-- core image, loaded with the high speed reader BIN loader
+bin.pal		-- the source used to make this
+			starts at 7777, requires a high speed reader
+
+blankRX01.uu	-- a formatted rx01 diskette with no data on it, needed
+			because (just like the real thing) the RX01
+			emulator can't format disks.  Copy this as needed.
+
+focal		-- core image, loaded with RIM, BIN and 4K stand alone FOCAL.
+			starts at 0200, requires a TTY
+
+rim		-- core image, loaded with the high speed reader RIM loader
+rim.pal		-- the source used to make this
+			starts at 7756, requires a high speed reader
+
+rxboot		-- DEC's rx01 bootstrap code
+rxboot.pal	-- the source used to make this
+			starts at 0033, requires an RX01.
+
+rxboot1		-- an alternate (shorter) rx01 bootstrap
+rxboot1.pal	-- the source used to make this
+			starts at 0032, requires an RX01.
+
+RX01 diskette images aren't included in this file, at this time.  As soon
+as copyright questions are cleared up, they'll go here.
+
+The PAL code given here was assembled using the PAL compatable cross
+assembler written in C available from
+
+	ftp.cs.uiowa.edu:/pub/jones/pdp8/pal.c.Z
+
+This code was loaded into the emulator's memory image by either of two
+means:  Either the coremake utility was used to load RIM images, or the
+BIN loader was run on the emulated PDP-8 to load BIN images.
+
+The image of FOCAL contained here was loaded from a bytestream image
+of the original FOCAL 1969 paper tape in BIN format.
+
+Doug Jones's PDP-8 emulator is available from:
+
+	ftp.cs.uiowa.edu:/pub/jones/pdp8/emulator.shar.Z

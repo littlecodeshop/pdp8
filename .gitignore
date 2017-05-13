@@ -1,4 +1,8 @@
 a.out
 pdp8
 Makefile.dependencies
+*dSYM
 
+*.o
+
+\.DS_Store

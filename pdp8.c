@@ -1,12 +1,64 @@
-//Reference card :
-//http://homepage.cs.uiowa.edu/~jones/pdp8/refcard/74.html
+/*
+ *=====================================================================================
+ *
+ *       Filename: pdp8.c 
+ *
+ *    Description:  PDP8 en 1 fichier 
+ *
+ *        Version:  1.0
+ *        Created:  Mer  8 jan 20:39:21 2014
+ *       Revision:  none
+ *       Compiler:  gcc
+ *
+ *         Author:  Richard Ribier (Coder), 
+ *        Company:  LittleCodeShop
+ *        
+ *        Based on PDP8 Reference card :
+ *         http://homepage.cs.uiowa.edu/~jones/pdp8/refcard/74.html
+ *
+ * =====================================================================================
+ */
+
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include "pdp8.h"
+#include <termios.h>
+#include <sys/select.h>
 
+extern char *optarg;
+extern int optind;
+extern int optopt;
+extern int opterr;
+extern int optreset;
+
+/* TELETYPE EMULATION */
+
+struct termios orig_termios;
+
+char (*key_in_callback)(void);
+void (*tty_out_callback)(char c);
+
+struct teletypeASR33 {
+    unsigned char tti_buffer; //8 bit buffer contains the last typed char
+    unsigned char kbd_flag; //1 when there is something ready in tti
+    unsigned char tto_buffer; //8 bit buffer next char to be printed
+    unsigned char prt_flag; //1 when ready to print next char
+};
+
+/* TAPE READER */
+
+struct tapereader750c {
+    unsigned char reader_flag;
+    unsigned char reader_buffer;
+    char * file_buffer;
+    long buffer_pos;
+    long buffer_size;
+};
+int tape_loaded = 0;
+
+/* CPU */
 
 typedef enum {
     AND = 0,
@@ -26,11 +78,7 @@ typedef enum {
     BREAK = 3
 } majorState;
 
-int focal_loaded = 0;
 int interrupt_countdown = -1;
-
-char (*key_in_callback)(void);
-void (*tty_out_callback)(char c);
 
 struct pdp8cpu{
 
@@ -40,29 +88,13 @@ struct pdp8cpu{
     unsigned short MB;
     unsigned short SR;
     unsigned char IR;
-
     unsigned char HALT;
-
     unsigned char INTER;
 
     //current state
     majorState state;
 };
 
-struct teletypeASR33 {
-    unsigned char tti_buffer; //8 bit buffer contains the last typed char
-    unsigned char kbd_flag; //1 when there is something ready in tti
-    unsigned char tto_buffer; //8 bit buffer next char to be printed
-    unsigned char prt_flag; //1 when ready to print next char
-};
-
-struct tapereader750c {
-    unsigned char reader_flag;
-    unsigned char reader_buffer;
-    char * file_buffer;
-    long buffer_pos;
-    long buffer_size;
-};
 
 
 
@@ -70,7 +102,10 @@ char * opcode_label[] = {
     "AND","TAD","ISZ","DCA","JMS","JMP","IOT","OPR"
 };
 
-//le hardware 
+
+
+/* THE HARDWARE */
+
 struct pdp8cpu cpu;
 struct teletypeASR33 teletype;
 struct tapereader750c tapereader;
@@ -184,8 +219,6 @@ unsigned short realAddress(unsigned short value)
 
 
     //printf("currentPage : %d  \t CPU.PC : %04o\n",currentpage,cpu.PC);
-
-
 
     //si zeropage donc les 5 premiers sont 00000 sinon il faut copier de PC
     unsigned short prefix = currentpage?((cpu.PC-1)&07600):00;
@@ -326,7 +359,7 @@ void IOTV(unsigned short value)
                     //printf("READING BYTE -> %02x POSITION : %ld\n",tapereader.reader_buffer,tapereader.buffer_pos);
                 }
                 else{
-                focal_loaded = 1;
+                tape_loaded = 1;
                 }
             }
             break;
@@ -340,7 +373,7 @@ void IOTV(unsigned short value)
                     //printf("READING BYTE -> %02x POSITION : %ld\n",tapereader.reader_buffer,tapereader.buffer_pos);
                 }
                 else{
-                focal_loaded = 1;
+                tape_loaded = 1;
                 }
                 //printf("ACL avant : %04o\n",cpu.ACL);
 
@@ -666,7 +699,7 @@ void version()
 
 void help(char * prg_name)
 {
-    printf("Hello guys !\n");
+    printf("DEC PDP8 emulator\n");
     printf("Usage %s \n",prg_name);
 }
 
@@ -682,6 +715,7 @@ int startPDP8(){
 
     teletype.kbd_flag = 0;
 
+    /* normalement l'operateur entre le RIM loader a la main */
     //RIM LOADER
     cpu.SR = 07756;
     loadAddress();
@@ -723,100 +757,24 @@ int startPDP8(){
     deposit();
 
 
-    //load the program //increment memory  
-    cpu.SR = 05555; //address de base
-    loadAddress();
-    cpu.SR = 07001;
-    deposit();
-    cpu.SR = 02361;
-    deposit();
-    cpu.SR = 05356;
-    deposit();
-    cpu.SR = 05355;
-    deposit();
-    cpu.SR = 00000;
-    deposit();
 
-
-    ////// PROGRAM UART
-    cpu.SR = 07470;
-    loadAddress();
-    cpu.SR = 07200;
-    deposit();
-    cpu.SR = 07001;
-    deposit();
-    cpu.SR = 07002;
-    deposit();
-    cpu.SR = 07001;
-    deposit();
-    cpu.SR = 06046;
-    deposit();
-    cpu.SR = 07402;
-    deposit();
-
-
-    ////////// TTY TEST OUTPUT
-    cpu.SR = 00000;
-    loadAddress();
-    cpu.SR = 07200;
-    deposit();
-    cpu.SR = 06046;
-    deposit();
-    cpu.SR = 06041;
-    deposit();
-    cpu.SR = 05002;
-    deposit();
-    cpu.SR = 07001;
-    deposit();
-    cpu.SR = 06046;
-    deposit();
-    cpu.SR = 05002;
-    deposit();
-
-    //////// ADDITION
-    cpu.SR = 0200;
-    loadAddress();
-    cpu.SR = 07200;
-    deposit();
-    cpu.SR = 01205;
-    deposit();
-    cpu.SR = 01206;
-    deposit();
-    cpu.SR = 07402;
-    deposit();
-    cpu.SR = 05577;
-    deposit();
-    cpu.SR = 00003;
-    deposit();
-    cpu.SR = 00004;
-    deposit();
-
-
-
-    cpu.SR = 07756; //address de base
+    cpu.SR = 07756; //address de base du rim loader
     loadAddress();
 
     cpu.HALT = 0;
 
     loadfile("loader.bin"); //load that paper tape in the machine
-    //loadtext("focal.txt");
-    //cpu.SR = 0200; //address de base
-    //loadAddress();
-    //while(!cpu.HALT){
-    //    singleInstruction();
-    // }
 
-    //Load focal
-    while(!focal_loaded){
+    //Load tape loader
+    while(!tape_loaded){
         singleInstruction();
     }
 
     for(int i=0;i<20;i++){
-        //dumpCpu();
         singleInstruction();
     }
-    printf("loader is loaded\n");
 
+    //load focal
     loadfile("focal.bin");
     cpu.SR = 07777; //address de base
     loadAddress();
@@ -827,8 +785,6 @@ int startPDP8(){
         //dumpCpu();
         singleInstruction();
     }
-    printf("focal is loaded\n");
-    dumpMemory(0200);
 
 
     cpu.SR = 0200;
@@ -854,12 +810,94 @@ int startPDP8(){
         }
         
         
-    //    if(kbhit()){
-    //        char c = getch();
-    //        if(c==3) exit(0);
-    //        //printf("=>>>>>%d\n",c);
-    //        keyboard_input(c);
-    //    }
     }
+
+}
+
+void reset_terminal_mode()
+{
+    tcsetattr(0, TCSANOW, &orig_termios);
+}
+
+void set_conio_terminal_mode()
+{
+    struct termios new_termios;
+
+    /* take two copies - one for now, one for later */
+    tcgetattr(0, &orig_termios);
+    memcpy(&new_termios, &orig_termios, sizeof(new_termios));
+
+    /* register cleanup handler, and set the new terminal mode */
+    atexit(reset_terminal_mode);
+    cfmakeraw(&new_termios);
+    tcsetattr(0, TCSANOW, &new_termios);
+}
+
+int kbhit()
+{
+    struct timeval tv = { 0L, 0L };
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(0, &fds);
+    return select(1, &fds, NULL, NULL, &tv);
+}
+
+int getch()
+{
+    int r;
+    unsigned char c;
+    if ((r = read(0, &c, sizeof(c))) < 0) {
+        return r;
+    } else {
+        return c;
+    }
+}
+
+
+void teletype_out(char c){
+    printf("%c",c);
+}
+
+char keyboard_in(){
+    if(kbhit()){
+        char c = getch();
+        if(c==3) exit(0);
+        return c;
+    }
+    return -1;
+}
+
+int main(int argc, char ** argv){
+
+    int opt;
+    int index;
+
+    while((opt = getopt(argc,argv,"vhf:"))!=-1){
+        switch(opt){
+            case 'f':
+                printf("LOADING FILE %s",optarg);
+                break;
+            case 'h':
+                help(argv[0]);
+                break;
+            case 'v':
+                version();
+                break;
+            default:
+                //start focal
+                break;
+        }
+    }
+
+    for (index = optind; index < argc; index++)
+        printf ("Non-option argument %s\n", argv[index]);
+
+    // n'oublis pas ca -> pour passer en mode raw (pas de delay apres key)
+    set_conio_terminal_mode();
+
+    registerKeyboardInput(keyboard_in);
+
+    //start the computer
+    startPDP8();
 
 }
