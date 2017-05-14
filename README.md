@@ -1,13 +1,20 @@
 # pdp8
 
-Simple emulator for the original PDP8 (straight 8).
-The CPU, memory, teletype and a tape reader are emulated.
+My simple emulator for the original [PDP8 (Straight 8)](https://en.wikipedia.org/wiki/PDP-8).
+I never used an actual PDP8 so based the emulation on information from [there](http://homepage.divms.uiowa.edu/~jones/pdp8/models/#PDP8).
 
 
-[PDP8](https://en.wikipedia.org/wiki/PDP-8)
+The following are emulated :
 
+* CPU
 
 ![PDP8](https://www.smecc.org/pdp8.jpg)
+
+* Teletype ASR33
+
+![ASR33](https://upload.wikimedia.org/wikipedia/commons/3/33/Teletype-IMG_7287.jpg)
+
+* High speed tape reader (750c)
 
 ## Building
     
@@ -19,21 +26,19 @@ There is just one C file to compile.
 
     ./pdp8 focal.bin
 
-## Contributing
+## Finding things to run
 
-1. Fork it!
-2. Create your feature branch: `git checkout -b my-new-feature`
-3. Commit your changes: `git commit -am 'Add some feature'`
-4. Push to the branch: `git push origin my-new-feature`
-5. Submit a pull request :D
+There are places with [Folders full of tape images](http://www.mirrorservice.org/sites/www.bitsavers.org/bits/DEC/pdp8/From_Vince_Slyngstad/misc/)
 
-## TODO
+[another place](http://dustyoldcomputers.com/pdp-common/reference/papertapes/dec-08.html)
+
+## Todo
 
 * Implement the CPU extensions
 * Emulate drives
 * Run OS8
 
 
-## License
+
 
 
